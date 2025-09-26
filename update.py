@@ -34,7 +34,8 @@ def main():
 
   static = router.get_resource('/ip/dns/static')
 
-  for entry in sorted(static.call('print'), key=lambda entry: entry['name'] + entry['type'] + entry['address']):
+  for entry in sorted([entry for entry in static.call('print') if entry['type'] in ['A', 'AAAA']],
+                      key=lambda entry: entry['name'] + entry['type'] + entry['address']):
 
     if 'comment' not in entry or entry['comment'] != 'external':
       continue
