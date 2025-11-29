@@ -3,20 +3,17 @@
 
 import datetime
 import os
+import socket
 import ssl
 import time
 
 import routeros_api
 
-import scapy.layers.inet6
-import scapy.layers.l2
-import scapy.sendrecv
-
 #----------------------------------------------------------------------------------------------------------------------#
 
 DELAY = 60
 EXPIRATION = '5m'
-TIMEOUT = 1
+TIMEOUT = 1.0
 
 #----------------------------------------------------------------------------------------------------------------------#
 
@@ -37,51 +34,38 @@ def main():
   for entry in sorted([entry for entry in static.call('print') if entry['type'] in ['A', 'AAAA']],
                       key=lambda entry: entry['name'] + entry['type'] + entry['address']):
 
-    if 'comment' not in entry or entry['comment'] != 'external':
+    if 'comment' not in entry or '=' not in entry['comment']:
       continue
+
+    service = entry['comment'].split('=', 1)
+
+    #######################
 
     if entry['ttl'] != EXPIRATION:
       static.call('set', {'id': entry['id'], 'ttl': EXPIRATION})
       entry['ttl'] = EXPIRATION
       print(entry, flush=True)
 
-    match entry['type']:
+    #######################
 
-      case 'A':
+    stream = socket.socket(socket.AF_INET6 if entry['type'] == 'AAAA' else socket.AF_INET, socket.SOCK_STREAM)
 
-        result = scapy.layers.l2.arping(entry['address'], timeout=TIMEOUT, verbose=False)[0]
+    if stream.connect_ex((entry['address'], int(service[0]))) == 0 and (service[1] == '' or stream.recvmsg(
+        len(service[1]))[0].decode('ASCII').rstrip() == service[1]):
 
-        match len(result):
-          case 0:
-            if entry['disabled'] == 'false':
-              static.call('set', {'id': entry['id'], 'disabled': 'true'})
-              entry['disabled'] = 'true'
-              print(entry, flush=True)
-          case 1:
-            if entry['disabled'] == 'true':
-              static.call('set', {'id': entry['id'], 'disabled': 'false'})
-              entry['disabled'] = 'false'
-              print(entry, flush=True)
+      if entry['disabled'] == 'true':
+        static.call('set', {'id': entry['id'], 'disabled': 'false'})
+        entry['disabled'] = 'false'
+        print(entry, flush=True)
 
-      case 'AAAA':
+    else:
 
-        result = scapy.sendrecv.srp1(scapy.layers.l2.Ether(dst="ff:ff:ff:ff:ff:ff") /
-                                     scapy.layers.inet6.IPv6(dst=entry['address']) /
-                                     scapy.layers.inet6.ICMPv6EchoRequest(),
-                                     timeout=TIMEOUT,
-                                     verbose=False)
+      if entry['disabled'] == 'false':
+        static.call('set', {'id': entry['id'], 'disabled': 'true'})
+        entry['disabled'] = 'true'
+        print(entry, flush=True)
 
-        match result:
-          case None:
-            if entry['disabled'] == 'false':
-              static.call('set', {'id': entry['id'], 'disabled': 'true'})
-              entry['disabled'] = 'true'
-              print(entry, flush=True)
-          case _:
-            if entry['disabled'] == 'true':
-              static.call('set', {'id': entry['id'], 'disabled': 'false'})
-              entry['disabled'] = 'false'
-              print(entry, flush=True)
+    stream.close()
 
   #######################
 
@@ -90,6 +74,8 @@ def main():
 #----------------------------------------------------------------------------------------------------------------------#
 
 if __name__ == '__main__':
+
+  socket.setdefaulttimeout(TIMEOUT)
 
   while True:
     main()
