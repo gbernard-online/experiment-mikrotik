@@ -2,6 +2,7 @@
 #--------------------------------------------- ghislain.bernard@gmail.com ---------------------------------------------#
 
 import datetime
+import json
 import os
 import socket
 import ssl
@@ -31,15 +32,9 @@ def main():
 
   static = router.get_resource('/ip/dns/static')
 
-  for entry in sorted([entry for entry in static.call('print') if entry['type'] in ['A', 'AAAA']],
-                      key=lambda entry: entry['name'] + entry['type'] + entry['address']):
-
-    if 'comment' not in entry or '=' not in entry['comment']:
-      continue
-
-    service = entry['comment'].split('=', 1)
-
-    #######################
+  for entry in sorted(
+    [entry for entry in static.call('print') if 'comment' in entry and entry['type'] in ['A', 'AAAA']],
+      key=lambda entry: entry['name'] + entry['type'] + entry['address']):
 
     if entry['ttl'] != EXPIRATION:
       static.call('set', {'id': entry['id'], 'ttl': EXPIRATION})
@@ -48,24 +43,56 @@ def main():
 
     #######################
 
-    stream = socket.socket(socket.AF_INET6 if entry['type'] == 'AAAA' else socket.AF_INET, socket.SOCK_STREAM)
+    services = json.loads(entry['comment'])
 
-    if stream.connect_ex((entry['address'], int(service[0]))) == 0 and (service[1] == '' or stream.recvmsg(
-        len(service[1]))[0].decode('ASCII').rstrip() == service[1]):
+    match [type(service).__name__ for service in services]:
+      case ['int']:
 
-      if entry['disabled'] == 'true':
-        static.call('set', {'id': entry['id'], 'disabled': 'false'})
-        entry['disabled'] = 'false'
-        print(entry, flush=True)
+        stream = socket.socket(socket.AF_INET6 if entry['type'] == 'AAAA' else socket.AF_INET, socket.SOCK_STREAM)
 
-    else:
+        if stream.connect_ex((entry['address'], services[0])) == 0:
 
-      if entry['disabled'] == 'false':
-        static.call('set', {'id': entry['id'], 'disabled': 'true'})
-        entry['disabled'] = 'true'
-        print(entry, flush=True)
+          if entry['disabled'] == 'true':
+            static.call('set', {'id': entry['id'], 'disabled': 'false'})
+            entry['disabled'] = 'false'
+            print(entry, flush=True)
 
-    stream.close()
+        else:
+
+          if entry['disabled'] == 'false':
+            static.call('set', {'id': entry['id'], 'disabled': 'true'})
+            entry['disabled'] = 'false'
+            print(entry, flush=True)
+
+        stream.close()
+
+      case ['int', 'str']:
+
+        stream = socket.socket(socket.AF_INET6 if entry['type'] == 'AAAA' else socket.AF_INET, socket.SOCK_STREAM)
+
+        if stream.connect_ex((entry['address'], services[0])) == 0 and stream.recvmsg(len(
+            services[1]))[0].decode('ASCII').rstrip() == services[1]:
+
+          if entry['disabled'] == 'true':
+            static.call('set', {'id': entry['id'], 'disabled': 'false'})
+            entry['disabled'] = 'false'
+            print(entry, flush=True)
+
+        else:
+
+          if entry['disabled'] == 'false':
+            static.call('set', {'id': entry['id'], 'disabled': 'true'})
+            entry['disabled'] = 'false'
+            print(entry, flush=True)
+
+        stream.close()
+
+      case _:
+
+        if entry['disabled'] == 'false':
+          static.call('set', {'id': entry['id'], 'disabled': 'true'})
+          entry['disabled'] = 'false'
+          print(entry, flush=True)
 
   #######################
 
