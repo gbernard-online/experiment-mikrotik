@@ -61,7 +61,7 @@ def main():
 
           if entry['disabled'] == 'false':
             static.call('set', {'id': entry['id'], 'disabled': 'true'})
-            entry['disabled'] = 'false'
+            entry['disabled'] = 'true'
             print(entry, flush=True)
 
         stream.close()
@@ -82,7 +82,7 @@ def main():
 
           if entry['disabled'] == 'false':
             static.call('set', {'id': entry['id'], 'disabled': 'true'})
-            entry['disabled'] = 'false'
+            entry['disabled'] = 'true'
             print(entry, flush=True)
 
         stream.close()
@@ -91,7 +91,7 @@ def main():
 
         if entry['disabled'] == 'false':
           static.call('set', {'id': entry['id'], 'disabled': 'true'})
-          entry['disabled'] = 'false'
+          entry['disabled'] = 'true'
           print(entry, flush=True)
 
   #######################
