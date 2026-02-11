@@ -14,4 +14,4 @@
 
 [MIT License](https://opensource.org/license/mit)
 
-`c[_] 2026`
+`c[_] 2025-2026`
