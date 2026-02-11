@@ -1,0 +1,12 @@
+.editorconfig
+.files.txt
+.gitignore
+.mypy.ini
+.prettierrc
+.pylintrc
+.style.yapf
+README.md
+notebook/img/github.webp
+notebook/img/linkedin.webp
+requirements.txt
+update.py
