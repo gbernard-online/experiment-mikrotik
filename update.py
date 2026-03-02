@@ -94,7 +94,7 @@ def main():
           entry['disabled'] = 'true'
           print(entry, flush=True)
 
-  router.close()
+  router.disconnect()
 
   #######################
 
