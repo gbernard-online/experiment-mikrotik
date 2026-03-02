@@ -26,11 +26,11 @@ def main():
                                         password=os.environ['MIKROTIK_PASSWORD'],
                                         username=os.environ['MIKROTIK_USERNAME'],
                                         plaintext_login=True,
-                                        ssl_context=ssl.create_default_context(cafile='ca.crt')).get_api()
+                                        ssl_context=ssl.create_default_context(cafile='ca.crt'))
 
   #######################
 
-  static = router.get_resource('/ip/dns/static')
+  static = router.get_api().get_resource('/ip/dns/static')
 
   for entry in sorted(
     [entry for entry in static.call('print') if 'comment' in entry and entry['type'] in ['A', 'AAAA']],
@@ -93,6 +93,8 @@ def main():
           static.call('set', {'id': entry['id'], 'disabled': 'true'})
           entry['disabled'] = 'true'
           print(entry, flush=True)
+
+  router.close()
 
   #######################
 
